@@ -1,0 +1,22 @@
+name: Inform Pages Repo
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'goal_src/**'
+
+jobs:
+  inform:
+    name: Inform Pages Repo
+    if: github.repository == 'open-goal/jak-project'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Send Dispatch
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.BOT_PAT }}
+          repository: 'open-goal/open-goal.github.io'
+          event-type: updateProgress

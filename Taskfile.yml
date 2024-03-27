@@ -1,0 +1,126 @@
+version: "3.13"
+
+includes:
+  build: ./scripts/tasks/Taskfile_{{OS}}.yml
+
+dotenv:
+  - ./scripts/tasks/.env
+  - ./scripts/tasks/.env.default
+
+tasks:
+  # SETTINGS / CONFIGURATION
+  settings:
+    - 'python ./scripts/tasks/update-env.py --info'
+  set-game-jak1:
+    - 'python ./scripts/tasks/update-env.py --game jak1'
+  set-game-jak2:
+    - 'python ./scripts/tasks/update-env.py --game jak2'
+  set-decomp-ntscv1:
+    desc: "aka black label"
+    cmds:
+      - 'python ./scripts/tasks/update-env.py --decomp_config ntscv1'
+  set-decomp-ntscv2:
+    desc: "aka red label"
+    cmds:
+      - 'python ./scripts/tasks/update-env.py --decomp_config ntscv2'
+  set-decomp-pal:
+    - 'python ./scripts/tasks/update-env.py --decomp_config pal'
+  set-decomp-ntscjp:
+    - 'python ./scripts/tasks/update-env.py --decomp_config ntscjp'
+  # GENERAL
+  extract:
+    desc: "Extracts the game's assets from './iso_data' with the set decompiler config"
+    preconditions:
+      - sh: test -f {{.DECOMP_BIN_RELEASE_DIR}}/decompiler{{.EXE_FILE_EXTENSION}}
+        msg: "Couldn't locate decompiler executable in '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler'"
+    cmds:
+      - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/{{.DECOMP_CONFIG}}" ./iso_data ./decompiler_out --config-override "{\\\"decompile_code\\\": false}"'
+  boot-game:
+    desc: "Boots the game, it will fail if it's not already compiled!"
+    preconditions:
+      - sh: test -f {{.GK_BIN_RELEASE_DIR}}/gk{{.EXE_FILE_EXTENSION}}
+        msg: "Couldn't locate runtime executable in '{{.GK_BIN_RELEASE_DIR}}/gk'"
+    cmds:
+      - "{{.GK_BIN_RELEASE_DIR}}/gk -boot -fakeiso -debug -v"
+  boot-game-retail:
+    desc: "Boots the game without debug mode, it will fail if it's not already compiled!"
+    preconditions:
+      - sh: test -f {{.GK_BIN_RELEASE_DIR}}/gk{{.EXE_FILE_EXTENSION}}
+        msg: "Couldn't locate runtime executable in '{{.GK_BIN_RELEASE_DIR}}/gk'"
+    cmds:
+      - "{{.GK_BIN_RELEASE_DIR}}/gk -boot -fakeiso -v"
+  run-game:
+    desc: "Start the game's runtime, to start the game itself the REPL is required"
+    preconditions:
+      - sh: test -f {{.GK_BIN_RELEASE_DIR}}/gk{{.EXE_FILE_EXTENSION}}
+        msg: "Couldn't locate runtime executable in '{{.GK_BIN_RELEASE_DIR}}/gk'"
+    cmds:
+      - "{{.GK_BIN_RELEASE_DIR}}/gk -fakeiso -debug -v"
+  # DEVELOPMENT
+  repl:
+    desc: "Start the REPL"
+    preconditions:
+      - sh: test -f {{.GOALC_BIN_RELEASE_DIR}}/goalc{{.EXE_FILE_EXTENSION}}
+        msg: "Couldn't locate compiler executable in '{{.GOALC_BIN_RELEASE_DIR}}/goalc'"
+    cmds:
+      - "{{.GOALC_BIN_RELEASE_DIR}}/goalc --game {{.GAME}}"
+  repl-lt:
+    cmds:
+      - "{{.GOALC_BIN_RELEASE_DIR}}/goalc --auto-lt --game {{.GAME}}"
+  format:
+    desc: "Format code"
+    cmds:
+      - cmd: python ./third-party/run-clang-format/run-clang-format.py -r common decompiler game goalc test tools lsp -i
+      # npm install -g prettier
+      - cmd: npx prettier --write ./decompiler/config/jak1_ntsc_black_label/*.jsonc
+        ignore_error: true
+      - cmd: npx prettier --write ./decompiler/config/jak2/*.jsonc
+        ignore_error: true
+  run-game-headless:
+    cmds:
+      - "{{.GK_BIN_RELEASE_DIR}}/gk -fakeiso -debug -nodisplay"
+  # DECOMPILING
+  decomp:
+    cmds:
+      - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/{{.DECOMP_CONFIG}}" "./iso_data" "./decompiler_out"'
+  decomp-file:
+    cmds:
+      - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --config-override '{\"allowed_objects\": [\"{{.FILE}}\"]}'"
+  decomp-clean:
+    cmds:
+      - python ./scripts/tasks/clean-decomp.py --game "{{.GAME}}"
+  update-gsrc:
+    cmds:
+      - python ./scripts/gsrc/update-gsrc-via-refs.py --game "{{.GAME}}" --decompiler "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler" --decompiler_config {{.DECOMP_CONFIG}}
+  update-gsrc-file:
+    cmds:
+      - task: decomp-file
+      - python ./scripts/gsrc/update-from-decomp.py --game "{{.GAME}}" --file {{.FILE}}
+  # TOOLS
+  analyze-ee-memory:
+    cmds:
+      - python ./scripts/tasks/extract-zip.py --file "{{.FILE}}" --out ./savestate_out/
+      - '{{.MEMDUMP_BIN_RELEASE_DIR}}/memory_dump_tool ./savestate_out/eeMemory.bin --output-path ./ --game {{.GAME}} > ee-analysis.log'
+  watch-pcsx2:
+    cmds:
+      - watchmedo shell-command --drop --patterns="*.p2s" --recursive --command='task analyze-ee-memory FILE="${watch_src_path}"' "{{.SAVESTATE_DIR}}"
+    vars:
+      SAVESTATE_DIR: '{{default "." .SAVESTATE_DIR}}'
+  # TESTS
+  offline-tests:
+    cmds:
+      - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}}'
+  update-ref-tests:
+    cmds:
+      - cmd: python ./scripts/tasks/default-file-or-folder.py --path failures
+      - cmd: '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --dump_current_output'
+        ignore_error: true
+      - python ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/
+      - task: offline-tests
+  # check-gsrc-file:
+  #   cmds:
+  #     - python ./scripts/check-gsrc-file.py --files "{{.FILES}}"
+  type-test:
+    cmds:
+      - cmd: '{{.GOALCTEST_BIN_RELEASE_DIR}}/goalc-test --gtest_brief=0 --gtest_filter="*Jak2TypeConsistency*"'
+        ignore_error: true
