@@ -7,8 +7,20 @@
 #include "decompiler/level_extractor/extract_common.h"
 #include "decompiler/level_extractor/merc_replacement.h"
 #include "decompiler/util/goal_data_reader.h"
+#include <filesystem>
+
+
+
+
 
 namespace decompiler {
+
+
+// Function to check if a given GLB file exists in the specified directory
+bool glbExists(const std::string& glbFileName) {
+    std::string glbFilePath = "custom_levels/jakswap/" + glbFileName + ".glb";
+    return fs::exists(glbFilePath);
+}
 
 // number of slots on VU1 data memory to store matrices
 constexpr int MERC_VU1_MATRIX_SLOTS = 18;
@@ -828,6 +840,8 @@ u8 convert_mat(int in) {
   }
 }
 
+
+
 tfrag3::MercVertex convert_vertex(const MercUnpackedVtx& vtx, float xyz_scale) {
   tfrag3::MercVertex out;
   out.pos[0] = vtx.pos[0] * xyz_scale;
@@ -987,87 +1001,61 @@ void extract_merc(const ObjectFileData& ag_data,
     }
   }
 
-  // replace eichar-lod0:
-  for (auto& model : out.merc_data.models) {
+// Main loop to compare GLB file names and perform swaps
+for (auto& model : out.merc_data.models) {
+    if (model.max_bones < 100) {
+        // Iterate through GLB file names in the directory
+        for (const auto& entry : fs::directory_iterator("custom_levels/jakswap/")) {
+            std::string glbFileName = entry.path().filename().stem().string();
+            // Convert both model name and GLB filename to lowercase for case-insensitive comparison
+            std::string modelNameLower = model.name;
+            std::string glbFileNameLower = glbFileName;
+            std::transform(modelNameLower.begin(), modelNameLower.end(), modelNameLower.begin(), ::tolower);
+            std::transform(glbFileNameLower.begin(), glbFileNameLower.end(), glbFileNameLower.begin(), ::tolower);
 
-          fmt::print("DOING SWAP!!!!!!!!!!!!!!!!!!!! {} {} {}\n", model.name, model.name,
-                 model.name);
-
-    if (model.name == "eichar-lod0" && model.max_bones < 100) {
-      fmt::print("DOING SWAP!!!!!!!!!!!!!!!!!!!! {} {} {}\n", model.effects.size(), model.max_bones,
-                 model.max_draws);
-
-      std::vector<tfrag3::MercVertex> old_verts;
-      for (auto& e : model.effects) {
-        for (auto& d : e.draws) {
-          for (size_t i = 0; i < d.index_count; i++) {
-            auto idx = out.merc_data.indices.at(i + d.first_index);
-            if (idx != UINT32_MAX) {
-              old_verts.push_back(out.merc_data.vertices[idx]);
+            // Remove ".glb" extension from GLB filename
+            if (glbFileNameLower.size() >= 4 && glbFileNameLower.substr(glbFileNameLower.size() - 4) == ".glb") {
+                glbFileNameLower = glbFileNameLower.substr(0, glbFileNameLower.size() - 4);
             }
-          }
-        }
-      }
 
-      auto swap_info = load_replacement_merc_model(
-          out.merc_data.indices.size(), out.merc_data.vertices.size(), out.textures.size(),
-          file_util::get_file_path({"custom_levels/jakswap/jak2_2.glb"}), old_verts);
-      model = swap_info.new_model;
-      model.name = "eichar-lod0";
-      fmt::print("swapping: {} inds, {} verts, {} tex\n", swap_info.new_indices.size(),
-                 swap_info.new_vertices.size(), swap_info.new_textures.size());
-      size_t old_start = out.merc_data.vertices.size();
-      for (auto& ind : swap_info.new_indices) {
-        ASSERT(ind >= old_start);
-      }
-      out.merc_data.indices.insert(out.merc_data.indices.end(), swap_info.new_indices.begin(),
-                                   swap_info.new_indices.end());
-      out.merc_data.vertices.insert(out.merc_data.vertices.end(), swap_info.new_vertices.begin(),
-                                    swap_info.new_vertices.end());
-      out.textures.insert(out.textures.end(), swap_info.new_textures.begin(),
-                          swap_info.new_textures.end());
-      break;
-    }
-  }
+            if (modelNameLower == glbFileNameLower) {
+                fmt::print("DOING SWAP!!!!!!!!!!!!!!!!!!!! {} {} {}\n", model.effects.size(), model.max_bones,
+                           model.max_draws);
 
+                std::vector<tfrag3::MercVertex> old_verts;
+                for (auto& e : model.effects) {
+                    for (auto& d : e.draws) {
+                        for (size_t i = 0; i < d.index_count; i++) {
+                            auto idx = out.merc_data.indices.at(i + d.first_index);
+                            if (idx != UINT32_MAX) {
+                                old_verts.push_back(out.merc_data.vertices[idx]);
+                            }
+                        }
+                    }
+                }
 
-  // replace eichar-lod0:
-  for (auto& model : out.merc_data.models) {
-    if (model.name == "yakow-lod0" && model.max_bones < 100) {
-      fmt::print("DOING SWAP!!!!!!!!!!!!!!!!!!!! {} {} {}\n", model.effects.size(), model.max_bones,
-                 model.max_draws);
-
-      std::vector<tfrag3::MercVertex> old_verts;
-      for (auto& e : model.effects) {
-        for (auto& d : e.draws) {
-          for (size_t i = 0; i < d.index_count; i++) {
-            auto idx = out.merc_data.indices.at(i + d.first_index);
-            if (idx != UINT32_MAX) {
-              old_verts.push_back(out.merc_data.vertices[idx]);
+                auto swap_info = load_replacement_merc_model(
+                    out.merc_data.indices.size(), out.merc_data.vertices.size(), out.textures.size(),
+                    file_util::get_file_path({"custom_levels/jakswap/" + glbFileName + ".glb"}), old_verts);
+                model = swap_info.new_model;
+                model.name = glbFileName; // Use the GLB filename directly
+                fmt::print("swapping: {} inds, {} verts, {} tex\n", swap_info.new_indices.size(),
+                           swap_info.new_vertices.size(), swap_info.new_textures.size());
+                size_t old_start = out.merc_data.vertices.size();
+                for (auto& ind : swap_info.new_indices) {
+                    ASSERT(ind >= old_start);
+                }
+                out.merc_data.indices.insert(out.merc_data.indices.end(), swap_info.new_indices.begin(),
+                                             swap_info.new_indices.end());
+                out.merc_data.vertices.insert(out.merc_data.vertices.end(), swap_info.new_vertices.begin(),
+                                              swap_info.new_vertices.end());
+                out.textures.insert(out.textures.end(), swap_info.new_textures.begin(),
+                                    swap_info.new_textures.end());
+                break; // Exit loop after performing the swap
             }
-          }
         }
-      }
-
-      auto swap_info = load_replacement_merc_model(
-          out.merc_data.indices.size(), out.merc_data.vertices.size(), out.textures.size(),
-          file_util::get_file_path({"custom_levels/jakswap/yakanddaxter.glb"}), old_verts);
-      model = swap_info.new_model;
-      model.name = "yakow-lod0";
-      fmt::print("swapping: {} inds, {} verts, {} tex\n", swap_info.new_indices.size(),
-                 swap_info.new_vertices.size(), swap_info.new_textures.size());
-      size_t old_start = out.merc_data.vertices.size();
-      for (auto& ind : swap_info.new_indices) {
-        ASSERT(ind >= old_start);
-      }
-      out.merc_data.indices.insert(out.merc_data.indices.end(), swap_info.new_indices.begin(),
-                                   swap_info.new_indices.end());
-      out.merc_data.vertices.insert(out.merc_data.vertices.end(), swap_info.new_vertices.begin(),
-                                    swap_info.new_vertices.end());
-      out.textures.insert(out.textures.end(), swap_info.new_textures.begin(),
-                          swap_info.new_textures.end());
-      break;
     }
-  }
+}
+
 }
 }  // namespace decompiler
