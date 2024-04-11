@@ -1,4 +1,0 @@
-(define format _format)
-
-(format #t "~A~%" (cons 'a 'b))
-0

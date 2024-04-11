@@ -1,2 +1,0 @@
-(format #t "~f~%" (sqrtf 5.0))
-0

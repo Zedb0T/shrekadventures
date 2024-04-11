@@ -1,6 +1,0 @@
-(define format _format)
-
-(format #t "~A~%"
-        (car (last (list 'a 'b 'c 'd)))
-        )
-        0

@@ -1,6 +1,0 @@
-(define format _format)
-
-(let ((my-pair (cons 'a 'b)))
-  (format #t "~A~A~%" (car my-pair) (cdr my-pair))
-  )
-  0

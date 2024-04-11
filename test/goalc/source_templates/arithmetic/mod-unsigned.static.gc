@@ -1,3 +1,0 @@
-(_format #t "~X ~X~%"
-         (mod -1 10) ;; -1
-         (mod (the uint #xffffffff) 10))

@@ -1,7 +1,0 @@
-(defun stack-test ()
-  (let ((arr (new 'stack-no-clear 'array 'uint8 12)))
-    (logand #b1111 (the uint (&-> arr 3)))
-    )
-  )
-
-(stack-test)

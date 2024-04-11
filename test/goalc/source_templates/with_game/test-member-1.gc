@@ -1,5 +1,0 @@
-(define format _format)
-
-(format #t "~A~%"
-        (member 'c (list 'a 'b 'c 'd)))
-        0

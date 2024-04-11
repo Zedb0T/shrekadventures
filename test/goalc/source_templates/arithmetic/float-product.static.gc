@@ -1,3 +1,0 @@
-(define format _format)
-
-(format #t "~f~%" (* 1.2 25.0 4.0))
