@@ -1,51 +1,51 @@
 # for CMake
-/Testing
+jak-project/Testing
 
 # for clion
-cmake-build-debug/*
-.idea/*
-build/*
-decompiler_out/*
-decompiler_out2/*
-logs/*
+jak-project/cmake-build-debug/*
+jak-project/.idea/*
+jak-project/build/*
+jak-project/decompiler_out/*
+jak-project/decompiler_out2/*
+jak-project/logs/*
 
 # wsl apparently builds to here?
-linux-default/
+jak-project/linux-default/
 
 # for Nix
-/result*
+jak-project//result*
 
-\#*#
-.#*#
-*.pyc
+jak-project/\#*#
+jak-project/.#*#
+jak-project/*.pyc
 
 # output from our tools
-*.bin
-*.log
-*.p2s
-savestate-out/
-savestate_out/
-failures/
-ee-results*.json
-.env
+jak-project/*.bin
+jak-project/*.log
+jak-project/*.p2s
+jak-project/savestate-out/
+jak-project/savestate_out/
+jak-project/failures/
+jak-project/ee-results*.json
+jak-project/.env
 
 # graphics debug
-debug_out/*
-gfx_dumps/*
-screenshots/*
+jak-project/debug_out/*
+jak-project/gfx_dumps/*
+jak-project/screenshots/*
 
 # game stuff
-game_config/*
-imgui.ini
+jak-project/game_config/*
+jak-project/imgui.ini
 
 # website stuff
-node_modules/
+jak-project/node_modules/
 
 # texture replacements
-texture_replacements/*
+jak-project/texture_replacements/*
 
 # generated cmake files
-svnrev.h
-ci-artifacts/
-out/build/
-__pycache__/
+jak-project/svnrev.h
+jak-project/ci-artifacts/
+jak-project/out/build/
+jak-project/__pycache__/
