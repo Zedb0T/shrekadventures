@@ -81,7 +81,7 @@ jobs:
           gh release edit ${TAG_VAL} --draft=false --repo open-goal/jak-project
 
       - name: Consume Release in the Launcher
-        uses: peter-evans/repository-dispatch@v2
+        uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.BOT_PAT }}
           repository: 'open-goal/launcher'
